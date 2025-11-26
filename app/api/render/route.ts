@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
+
+const RENDER_SERVICE_URL =
+    process.env.RENDER_SERVICE_URL || "http://localhost:3001";
 
 export async function POST(request: NextRequest) {
     try {
@@ -13,49 +14,41 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        console.log("📝 Preparing render configuration...");
+        console.log("🎬 Submitting render job to microservice...");
 
-        const timestamp = Date.now();
-        const configFileName = `render-config-${timestamp}.json`;
-        const outputDir = path.join(process.cwd(), "public", "outputs");
-        const configPath = path.join(outputDir, configFileName);
+        // Submit job to render service
+        const response = await fetch(`${RENDER_SERVICE_URL}/api/render`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                videoUrl,
+                captions,
+                style,
+            }),
+        });
 
-        // Ensure output directory exists
-        await mkdir(outputDir, { recursive: true });
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || "Render service error");
+        }
 
-        const renderConfig = {
-            videoUrl,
-            captions,
-            style,
-            timestamp,
-            outputFileName: `captioned-video-${timestamp}.mp4`,
-        };
+        const data = await response.json();
 
-        await writeFile(configPath, JSON.stringify(renderConfig, null, 2));
-
-        console.log("✅ Configuration saved!");
-
-        // Create PowerShell-compatible render command for Windows
-        const propsJson = JSON.stringify(renderConfig);
-        const outputPath = `public/outputs/captioned-video-${timestamp}.mp4`;
-
-        // Escape quotes for PowerShell
-        const escapedProps = propsJson.replace(/"/g, '`"');
-        const renderCommand = `npx remotion render remotion/Root.tsx VideoWithCaptions ${outputPath} --props="${escapedProps}"`;
+        console.log("✅ Render job submitted:", data.jobId);
 
         return NextResponse.json({
             success: true,
-            message: "Render configuration created",
-            renderCommand,
-            configFile: `/outputs/${configFileName}`,
-            outputFileName: `captioned-video-${timestamp}.mp4`,
-            outputPath: `/outputs/captioned-video-${timestamp}.mp4`,
+            jobId: data.jobId,
+            message: "Render job submitted successfully",
+            statusUrl: data.statusUrl,
         });
     } catch (error) {
         console.error("❌ Error:", error);
         return NextResponse.json(
             {
-                error: "Failed to prepare render configuration",
+                error: "Failed to submit render job",
                 details:
                     error instanceof Error ? error.message : "Unknown error",
             },
