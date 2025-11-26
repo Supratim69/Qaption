@@ -202,12 +202,6 @@ Your video will be exported in Full HD (1920x1080) at 30 FPS!
                                         </p>
                                     </div>
                                 )}
-                                <div className="mt-4 p-3 bg-[#1E1E1E] border border-[#3A3A3A] rounded-md">
-                                    <p className="text-xs text-gray-400">
-                                        Powered by AssemblyAI • Hinglish support
-                                        included
-                                    </p>
-                                </div>
                             </div>
                         )}
 
@@ -312,13 +306,6 @@ Your video will be exported in Full HD (1920x1080) at 30 FPS!
                             </div>
                         )}
                     </div>
-                </div>
-
-                {/* Footer */}
-                <div className="mt-16 pt-8 border-t border-[#3A3A3A] text-center">
-                    <p className="text-sm text-gray-500">
-                        Powered by Next.js, Remotion, and AssemblyAI
-                    </p>
                 </div>
             </div>
         </main>

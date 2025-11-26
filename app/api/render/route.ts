@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { writeFile } from "fs/promises";
+import { writeFile, mkdir } from "fs/promises";
 import path from "path";
-import { downloadCaptions } from "@/lib/utils";
 
 export async function POST(request: NextRequest) {
     try {
@@ -16,15 +15,13 @@ export async function POST(request: NextRequest) {
 
         console.log("📝 Preparing render configuration...");
 
-        // Save the render configuration to a JSON file
         const timestamp = Date.now();
         const configFileName = `render-config-${timestamp}.json`;
-        const configPath = path.join(
-            process.cwd(),
-            "public",
-            "outputs",
-            configFileName
-        );
+        const outputDir = path.join(process.cwd(), "public", "outputs");
+        const configPath = path.join(outputDir, configFileName);
+
+        // Ensure output directory exists
+        await mkdir(outputDir, { recursive: true });
 
         const renderConfig = {
             videoUrl,
@@ -38,23 +35,21 @@ export async function POST(request: NextRequest) {
 
         console.log("✅ Configuration saved!");
 
-        // Create CLI command
-        const propsJson = JSON.stringify(renderConfig).replace(/"/g, '\\"');
-        const renderCommand = `npx remotion render remotion/Root.tsx VideoWithCaptions public/outputs/captioned-video-${timestamp}.mp4 --props="${propsJson}"`;
+        // Create PowerShell-compatible render command for Windows
+        const propsJson = JSON.stringify(renderConfig);
+        const outputPath = `public/outputs/captioned-video-${timestamp}.mp4`;
+
+        // Escape quotes for PowerShell
+        const escapedProps = propsJson.replace(/"/g, '`"');
+        const renderCommand = `npx remotion render remotion/Root.tsx VideoWithCaptions ${outputPath} --props="${escapedProps}"`;
 
         return NextResponse.json({
             success: true,
-            message:
-                "Render configuration created. Use Remotion CLI to render the video.",
+            message: "Render configuration created",
             renderCommand,
             configFile: `/outputs/${configFileName}`,
             outputFileName: `captioned-video-${timestamp}.mp4`,
-            instructions: {
-                step1: "Open terminal in project directory",
-                step2: "Copy and run the command below",
-                step3: `Video will be saved as: public/outputs/captioned-video-${timestamp}.mp4`,
-                step4: "Upload to S3 or download directly",
-            },
+            outputPath: `/outputs/captioned-video-${timestamp}.mp4`,
         });
     } catch (error) {
         console.error("❌ Error:", error);
